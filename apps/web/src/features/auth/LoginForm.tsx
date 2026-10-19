@@ -1,9 +1,9 @@
 'use client';
 
 import { loginInputSchema } from '@repo/contracts';
-import { Eye, EyeOff } from 'lucide-react';
+import { CircleAlert, Eye, EyeOff } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -16,11 +16,16 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const login = useLogin();
   const formErrorId = useId();
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // Tras un login correcto se mantiene el estado de carga hasta que llega el panel.
+  const [redirecting, setRedirecting] = useState(false);
+  const busy = login.isPending || redirecting;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -32,26 +37,31 @@ export function LoginForm() {
       const next: { email?: string; password?: string } = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
-        if (key === 'email' || key === 'password') {
+        if ((key === 'email' || key === 'password') && !next[key]) {
           next[key] = issue.message;
         }
       }
       setFieldErrors(next);
-      // Errores de campo junto al input; el alert general queda para fallos de API.
+      (next.email ? emailRef : passwordRef).current?.focus();
       return;
     }
 
     try {
       await login.mutateAsync(parsed.data);
-      const next = safeNextPath(searchParams.get('next'));
-      router.replace(next);
+      setRedirecting(true);
+      router.replace(safeNextPath(searchParams.get('next')));
       router.refresh();
     } catch (err) {
       if (err instanceof ApiClientError) {
-        setFormError(err.message);
+        setFormError(
+          err.code === 'RATE_LIMITED'
+            ? 'Demasiados intentos. Espera un minuto antes de volver a probar.'
+            : err.message,
+        );
       } else {
-        setFormError('No se pudo iniciar sesión');
+        setFormError('No hay conexión con el servidor. Inténtalo de nuevo.');
       }
+      passwordRef.current?.focus();
     }
   }
 
@@ -63,10 +73,13 @@ export function LoginForm() {
       noValidate
     >
       <Input
+        ref={emailRef}
         label="Email"
         name="email"
         type="email"
         autoComplete="email"
+        inputMode="email"
+        spellCheck={false}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         error={fieldErrors.email}
@@ -74,6 +87,7 @@ export function LoginForm() {
       />
       <div className="relative">
         <Input
+          ref={passwordRef}
           label="Contraseña"
           name="password"
           type={showPassword ? 'text' : 'password'}
@@ -86,21 +100,30 @@ export function LoginForm() {
         />
         <button
           type="button"
-          className="absolute bottom-0 right-1 flex size-11 cursor-pointer items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted)] hover:text-[var(--text)]"
+          className="absolute right-0.5 top-7 flex size-10 cursor-pointer items-center justify-center rounded-[var(--radius-sm)] text-[var(--muted)] transition-colors hover:text-[var(--text)]"
           onClick={() => setShowPassword((v) => !v)}
           aria-pressed={showPassword}
           aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
         >
-          {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+          {showPassword ? (
+            <EyeOff aria-hidden className="size-5" />
+          ) : (
+            <Eye aria-hidden className="size-5" />
+          )}
         </button>
       </div>
       {formError ? (
-        <p id={formErrorId} role="alert" className="text-sm text-[var(--danger)]">
+        <p
+          id={formErrorId}
+          role="alert"
+          className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-[color-mix(in_srgb,var(--danger)_8%,var(--surface))] px-3 py-2.5 text-sm font-medium text-[var(--danger)]"
+        >
+          <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
           {formError}
         </p>
       ) : null}
-      <Button type="submit" disabled={login.isPending} className="w-full">
-        {login.isPending ? 'Entrando…' : 'Entrar'}
+      <Button type="submit" loading={busy} className="mt-1 w-full">
+        {busy ? 'Entrando…' : 'Entrar'}
       </Button>
     </form>
   );

@@ -16,9 +16,24 @@ describe('VmForm', () => {
     await user.type(ram, '-1');
 
     await waitFor(() => {
-      expect(view.getByText(/ram mínimo/i)).toBeInTheDocument();
+      expect(view.getByText(/la ram mínima es 1 gb/i)).toBeInTheDocument();
     });
-    expect(view.getByRole('button', { name: 'Crear' })).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('al enviar con errores muestra todos los mensajes y no envía', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const { container } = render(<VmForm submitLabel="Crear" onSubmit={onSubmit} />);
+    const view = within(container);
+
+    // El botón no se deshabilita por invalidez: al pulsarlo se explica qué falta.
+    await user.click(view.getByRole('button', { name: 'Crear' }));
+
+    await waitFor(() => {
+      expect(view.getByText(/al menos 3 caracteres/i)).toBeInTheDocument();
+    });
+    expect(view.getByLabelText('Nombre')).toHaveFocus();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

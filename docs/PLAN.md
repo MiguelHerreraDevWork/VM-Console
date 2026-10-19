@@ -42,6 +42,7 @@ Las versiones exactas se fijan en el lockfile al construir el monorepo.
 **Fases 01–09 terminadas** en local. Publicación remota pendiente de decisión humana.
 
 - README, quality gates, recorrido integral y Git local listos; **no se publica** hasta decidir proveedor, visibilidad y nombre.
+- **Revisión final de entrega (2026-10-19):** instalación limpia según el README, comandos de calidad y recorrido en navegador sobre el estado final. La evidencia está en una sección propia de [09-calidad-entrega](phases/09-calidad-entrega.md), separada de la evidencia histórica.
 
 Estados válidos de una fase: `Pendiente`, `En curso`, `Bloqueada` o `Terminada`.
 

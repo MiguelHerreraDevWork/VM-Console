@@ -56,7 +56,7 @@
 1. **Utilidades de caché y pruebas unitarias.**
 2. **Crear optimista** (+ `VmDraftProvider`, navegación cliente vía `DraftNavBridge`).
 3. **Actualizar optimista** (edición y encender/apagar).
-4. **Eliminar optimista** (incluido `404` sin fantasma).
+4. **Eliminar optimista** (incluido `404` sin fantasma). Desde el 2026-10-19, la fila permanece marcada «Eliminando…» hasta la respuesta y deja de contar en las sumas desde el inicio ([DECISIONES §5](../DECISIONES.md)).
 5. **Bloqueos de coherencia** (acciones bloqueadas si `pending` o `temp-…`).
 6. **Indicador de pendiente** (`opacity`, «Guardando…», `aria-busy`).
 7. **Política de feedback** (toasts éxito/error; error persistente con «Volver al formulario»).

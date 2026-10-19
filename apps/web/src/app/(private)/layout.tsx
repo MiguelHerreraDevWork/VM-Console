@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { AppShell } from '../../components/layout/AppShell';
 import { SessionHydration } from '../../features/auth/SessionHydration';
 import { fetchSessionUser } from '../../features/auth/session-server';
 import { safeNextPath } from '../../lib/safe-next';
@@ -14,5 +15,9 @@ export default async function PrivateLayout({ children }: { children: ReactNode 
     redirect(`/login?next=${next}`);
   }
 
-  return <SessionHydration user={user!}>{children}</SessionHydration>;
+  return (
+    <SessionHydration user={user}>
+      <AppShell>{children}</AppShell>
+    </SessionHydration>
+  );
 }

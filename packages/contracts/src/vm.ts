@@ -14,28 +14,38 @@ export const vmInputSchema = z.object({
         .string()
         .min(3, 'El nombre debe tener al menos 3 caracteres')
         .max(50, 'El nombre no puede superar 50 caracteres')
-        .regex(
-          VM_NAME_PATTERN,
-          'El nombre solo admite letras, números, espacios y guion',
-        ),
+        .regex(VM_NAME_PATTERN, 'El nombre solo admite letras, números, espacios y guion'),
     ),
   cores: z
-    .number({ invalid_type_error: 'cores debe ser un número' })
-    .int('cores debe ser un entero')
-    .min(1, 'cores mínimo: 1')
-    .max(64, 'cores máximo: 64'),
+    .number({
+      required_error: 'Indica el número de vCPU',
+      invalid_type_error: 'Indica el número de vCPU',
+    })
+    .int('Las vCPU deben ser un número entero')
+    .min(1, 'Mínimo 1 vCPU')
+    .max(64, 'Máximo 64 vCPU'),
   ram: z
-    .number({ invalid_type_error: 'ram debe ser un número' })
-    .int('ram debe ser un entero')
-    .min(1, 'ram mínimo: 1 GB')
-    .max(512, 'ram máximo: 512 GB'),
+    .number({
+      required_error: 'Indica la RAM en GB',
+      invalid_type_error: 'Indica la RAM en GB',
+    })
+    .int('La RAM debe ser un número entero de GB')
+    .min(1, 'La RAM mínima es 1 GB')
+    .max(512, 'La RAM máxima es 512 GB'),
   disk: z
-    .number({ invalid_type_error: 'disk debe ser un número' })
-    .int('disk debe ser un entero')
-    .min(10, 'disk mínimo: 10 GB')
-    .max(4096, 'disk máximo: 4096 GB'),
-  os: z.enum(VM_OS_OPTIONS),
-  status: z.enum(VM_STATUSES),
+    .number({
+      required_error: 'Indica el disco en GB',
+      invalid_type_error: 'Indica el disco en GB',
+    })
+    .int('El disco debe ser un número entero de GB')
+    .min(10, 'El disco mínimo es 10 GB')
+    .max(4096, 'El disco máximo es 4096 GB'),
+  os: z.enum(VM_OS_OPTIONS, {
+    errorMap: () => ({ message: 'Elige un sistema operativo de la lista' }),
+  }),
+  status: z.enum(VM_STATUSES, {
+    errorMap: () => ({ message: 'El estado debe ser Encendida o Apagada' }),
+  }),
 });
 
 export type VmInput = z.infer<typeof vmInputSchema>;

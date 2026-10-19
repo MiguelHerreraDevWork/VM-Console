@@ -189,6 +189,7 @@ Checklist del recorrido integral, con resultado anotado en cada punto:
 **Git / publicación**
 
 - `git init` + commits locales: `6ee8103` (entrega inicial), `d33e179` (`prisma generate` en `postinstall` / `db:migrate`; elimina `debug-socket.ts`).
+  - _Nota de la revisión final (2026-10-19):_ esos dos commits ya no existen en el historial actual. El repositorio se reinició como una única instantánea local, `20bda9b` («Initial local snapshot: IFX VM Console»), que incluye su contenido. Se conservan aquí como registro histórico.
 - Clon limpio en `%TEMP%\ifx-clean-clone2`: `pnpm install` (postinstall genera cliente), `pnpm db:seed` OK, `pnpm typecheck` OK.
 - Hallazgo corregido: sin `prisma generate`, el seed del clon fallaba; quedó en el flujo de install/migrate.
 - **URL remota:** pendiente — decidir proveedor, visibilidad y nombre; **no hay `push`**.
@@ -211,3 +212,65 @@ Checklist del recorrido integral, con resultado anotado en cada punto:
 - [x] Recorrido ambos roles.
 - [x] Sin secretos en Git; **URL pública pendiente de decisión humana** (no bloquea el cierre local acordado en DECISIONES §7).
 - [x] `PLAN.md` actualizado.
+
+## Revisión final de entrega (2026-10-19, Claude Code)
+
+Evidencia nueva y separada de la anterior. Corresponde al estado final, que incluye la revisión integral de frontend, los indicadores de carga, el Panel de resumen y los filtros de Máquinas.
+
+### Requisitos del enunciado contrastados
+
+| Requisito | Comprobación en esta revisión |
+| --- | --- |
+| Login con JWT en cookie `HttpOnly`, `Secure`, `SameSite`; sin token en body ni `localStorage` | `curl` sobre la instalación limpia: `Set-Cookie: session=…; Max-Age=28800; Path=/; HttpOnly; Secure; SameSite=Lax`; body `{ user: { id, email, role } }`. En navegador: `localStorage` y `sessionStorage` vacíos y cookie no visible desde JS |
+| Rutas privadas, roles y UI oculta para Cliente | Cliente sin controles de escritura en el DOM (Panel y Máquinas, 4 combinaciones de tema y ancho); `/vms/new` → `/vms` |
+| `POST`/`GET`/`PUT`/`DELETE /vms` con permisos | Instalación limpia: Cliente `POST`/`PUT`/`DELETE` → `403`; sin sesión → `401`; tests de API 24/24 |
+| Validación en tiempo real | Tests de `VmForm` y de contratos; recorrido de formulario |
+| Panel de recursos de VMs activas (`ON`) | Panel 28/76/1020 frente a la API y SQL; ranking por recurso frente a la API |
+| UI optimista con reversión (crear, editar, eliminar) | Fallos 500 simulados en las tres operaciones: reversión correcta; `404` en borrado sin VM fantasma |
+| Skeletons, toasts y estados vacíos | Carga con red lenta, vacío, «todas apagadas» y error en Panel y Máquinas |
+| Tiempo real (plus) | Dos sesiones: suma del Panel del Cliente actualizada sin recargar; resaltado en Máquinas (fila en escritorio, tarjeta en móvil) |
+| Entregables: README, credenciales, diagrama, Bitácora | README actualizado; credenciales probadas en instalación limpia |
+
+### Comandos sobre el estado final
+
+| Dónde | Comando | Resultado |
+| --- | --- | --- |
+| Repositorio | `pnpm typecheck` | OK |
+| Repositorio | `pnpm lint` | OK |
+| Repositorio | `pnpm test` | OK: contracts 10, api 24, web 42 |
+| Repositorio | `pnpm build` (web con `NEXT_DIST_DIR`) | **Falló** en `prisma generate` con `EPERM`: Windows bloquea el motor de Prisma porque lo usa la API de `pnpm dev` en marcha. No es un fallo de código; documentado en el README |
+| Instalación limpia | `pnpm install --frozen-lockfile` | OK |
+| Instalación limpia | `pnpm db:up` → healthy, `pnpm db:migrate`, `pnpm db:seed` ×2 | OK: 2 usuarios, 12 VMs, 28 vCPU encendidas; seed idempotente |
+| Instalación limpia | `pnpm typecheck` / `pnpm lint` | OK |
+| Instalación limpia | `pnpm test` | **Falló** la primera vez (23 tests de API): `ifx_test` sin tablas, porque el README no pedía `pnpm db:test:migrate`. Tras ejecutarlo: OK, 10 / 24 / 42. README corregido |
+| Instalación limpia | `pnpm build` (literal) | OK: Next.js compilado, 7 rutas |
+| Instalación limpia | `/health` directo y `/api/health` vía web | `200 {"status":"ok"}` |
+
+**Instalación limpia: cómo se aisló.** Se copiaron solo los archivos que entran en Git, sin `node_modules`, `.env` ni builds, a `C:\Users\B4N3D or Banned\AppData\Local\Temp\ifx-clean`, una ruta con espacios. Se siguió el README cambiando únicamente puertos (5442/4100/3100) y el nombre del contenedor mediante un `docker-compose.override.yml` local, para no tocar la base de desarrollo, que conservó sus 12 VMs.
+
+Un primer intento dentro de una carpeta muy profunda falló en `db:migrate` con `ENOENT`: la ruta de `schema-engine-windows.exe` llegaba a 276 caracteres, por encima del límite de 260 de Windows. Al final se retiraron el contenedor, el volumen y la carpeta de la copia.
+
+### Recorrido en navegador (Chrome, sobre el estado final)
+
+| Batería | Cobertura | Resultado |
+| --- | --- | --- |
+| Instalación limpia | Login ADMIN y CLIENT; Panel 28/76/1020; Máquinas 12 VMs; controles de escritura ADMIN 24 / CLIENT 0 | OK |
+| Regresión funcional | Sumas, tiempo real (Panel y resaltado en Máquinas), reversión de las 3 mutaciones, `404`, vacío/error/carga, tema, movimiento reducido, redirección abierta, `403` del Cliente, navegación sin reconexión | 25/25 |
+| Indicadores de carga con red lenta | Panel ↔ Máquinas, Nueva VM, edición, encender, apagar, crear, guardar y eliminar con éxito y fallo (escritorio y móvil, oscuro y claro) | 4 × 27/27 |
+| Filtros | Búsqueda, Estado, SO, URL, sin resultados, restablecer, optimista, tiempo real, permisos, teclado, 390 px (ambos roles, ambos temas, móvil y escritorio) | 20 + 18 + 20 + 18 |
+| Filtros cerrados y abiertos | 320 / 390 / 640 / 768 / 1440 px × 2 temas | Sin recortes ni scroll horizontal; 10/10 menús dentro de pantalla |
+| Panel | Ranking frente a la API, teclado en pestañas, unidades, sin porcentajes, cambio optimista, estados, permisos, 390 px | 23/23 |
+| Capturas | Login, Panel, Máquinas y Nueva VM con ambos roles, temas y anchos | Revisadas |
+
+Tras las pruebas se restauró el seed en la base de desarrollo (12 VMs, 28 vCPU encendidas).
+
+### Documentación alineada
+
+- README: Panel de resumen sin inventario duplicado, filtros de Máquinas, recorrido real del tiempo real, `--frozen-lockfile`, `db:test:migrate` antes de los tests, avisos de Windows (`pnpm build` con `pnpm dev` en marcha, rutas largas), estructura del frontend y dos prompts **literales**.
+- `DECISIONES.md` §7 y §8, `BITACORA_IA.md` y `PLAN.md` actualizados. `DESIGN.md` ya reflejaba la interfaz final.
+
+### Git
+
+- Revisión de archivos: `.env` ignorado; sin `node_modules`, `dist`, `.next` ni `*.tsbuildinfo` versionados; `.env.example`, migraciones, lockfile y documentación incluidos.
+- Revisado el diff: sin código de depuración; la API no cambia; contratos solo cambian los mensajes de validación.
+- Commit local en `main` tras esta revisión. Sin remoto, sin `push` y sin reescribir el historial.

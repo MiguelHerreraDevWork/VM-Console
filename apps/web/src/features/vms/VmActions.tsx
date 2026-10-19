@@ -4,6 +4,7 @@ import { Pencil, Power, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { LinkPendingReporter } from '../../components/layout/navigation-pending';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { RoleGate } from '../auth/RoleGate';
@@ -15,17 +16,16 @@ export function VmActions({ vm }: { vm: VmView }) {
   const deleteVm = useDeleteVm();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const busy = isVmBusy(vm);
+  const isOn = vm.status === 'ON';
 
   function toggleStatus() {
     if (busy || updateVm.isPending) {
       return;
     }
-    const nextStatus = vm.status === 'ON' ? 'OFF' : 'ON';
     updateVm.mutate({
       id: vm.id,
-      input: { ...vmToInput(vm), status: nextStatus },
-      successToast:
-        nextStatus === 'ON' ? `«${vm.name}» encendida` : `«${vm.name}» apagada`,
+      input: { ...vmToInput(vm), status: isOn ? 'OFF' : 'ON' },
+      intent: 'power',
     });
   }
 
@@ -39,15 +39,15 @@ export function VmActions({ vm }: { vm: VmView }) {
 
   return (
     <RoleGate action="vm:edit">
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           onClick={() => toggleStatus()}
           disabled={busy || updateVm.isPending}
-          aria-label={vm.status === 'ON' ? `Apagar ${vm.name}` : `Encender ${vm.name}`}
-          title={vm.status === 'ON' ? 'Apagar' : 'Encender'}
+          aria-label={isOn ? `Apagar ${vm.name}` : `Encender ${vm.name}`}
+          title={isOn ? 'Apagar' : 'Encender'}
         >
           <Power className="size-4" aria-hidden />
         </Button>
@@ -55,37 +55,46 @@ export function VmActions({ vm }: { vm: VmView }) {
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             disabled
-            aria-label={`Editar ${vm.name} (guardando…)`}
-            title="Guardando…"
+            aria-label={`Editar ${vm.name} (operación en curso)`}
+            title="Operación en curso"
           >
             <Pencil className="size-4" aria-hidden />
           </Button>
         ) : (
-          <Button asChild variant="ghost" size="icon" aria-label={`Editar ${vm.name}`}>
-            <Link href={`/vms/${vm.id}/edit`}>
+          <Button asChild variant="ghost" size="icon-sm" aria-label={`Editar ${vm.name}`}>
+            <Link href={`/vms/${vm.id}/edit`} title="Editar">
               <Pencil className="size-4" aria-hidden />
+              <LinkPendingReporter href={`/vms/${vm.id}/edit`} />
             </Link>
           </Button>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => setConfirmOpen(true)}
-          disabled={busy || deleteVm.isPending}
-          aria-label={`Eliminar ${vm.name}`}
-          title="Eliminar"
-        >
-          <Trash2 className="size-4 text-[var(--danger)]" aria-hidden />
-        </Button>
         <ConfirmDialog
+          // El botón es el Trigger de Radix: al cancelar o pulsar Escape el foco vuelve a él.
+          trigger={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              disabled={busy || deleteVm.isPending}
+              aria-label={`Eliminar ${vm.name}`}
+              title="Eliminar"
+              className="hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] hover:text-[var(--danger)]"
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          }
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title="Eliminar VM"
-          description={`¿Eliminar «${vm.name}»? Esta acción no se puede deshacer.`}
-          confirmLabel="Eliminar"
+          title="¿Eliminar esta VM?"
+          description={
+            <>
+              Se eliminará <strong className="font-semibold text-[var(--text)]">{vm.name}</strong>{' '}
+              del inventario. Esta acción no se puede deshacer.
+            </>
+          }
+          confirmLabel="Eliminar VM"
           cancelLabel="Cancelar"
           danger
           onConfirm={() => confirmDelete()}

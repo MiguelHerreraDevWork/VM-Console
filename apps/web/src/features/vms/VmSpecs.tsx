@@ -1,36 +1,39 @@
 import type { Vm } from '@repo/contracts';
+import { Cpu, HardDrive, MemoryStick, type LucideIcon } from 'lucide-react';
 
-export function VmSpecs({
-  vm,
-  className,
+import { formatCount } from '../dashboard/lib/format';
+
+function Spec({
+  icon: Icon,
+  label,
+  value,
+  unit,
 }: {
-  vm: Pick<Vm, 'cores' | 'ram' | 'disk' | 'os'>;
-  className?: string;
+  icon: LucideIcon;
+  label: string;
+  value: number;
+  unit: string;
 }) {
   return (
-    <dl className={className ?? 'flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]'}>
-      <div>
-        <dt className="sr-only">Sistema operativo</dt>
-        <dd>{vm.os}</dd>
-      </div>
-      <div>
-        <dt className="sr-only">vCPU</dt>
-        <dd>
-          <span className="font-mono text-[var(--text)]">{vm.cores}</span> vCPU
-        </dd>
-      </div>
-      <div>
-        <dt className="sr-only">RAM</dt>
-        <dd>
-          <span className="font-mono text-[var(--text)]">{vm.ram}</span> GB RAM
-        </dd>
-      </div>
-      <div>
-        <dt className="sr-only">Disco</dt>
-        <dd>
-          <span className="font-mono text-[var(--text)]">{vm.disk}</span> GB disco
-        </dd>
-      </div>
+    <div className="flex items-center gap-1.5">
+      <dt className="flex items-center text-[var(--muted)]">
+        <Icon aria-hidden className="size-4" />
+        <span className="sr-only">{label}</span>
+      </dt>
+      <dd className="text-sm">
+        <span className="font-semibold tabular-nums text-[var(--text)]">{formatCount(value)}</span>{' '}
+        <span className="text-[var(--muted)]">{unit}</span>
+      </dd>
+    </div>
+  );
+}
+
+export function VmSpecs({ vm }: { vm: Pick<Vm, 'cores' | 'ram' | 'disk'> }) {
+  return (
+    <dl className="flex flex-wrap gap-x-4 gap-y-1.5">
+      <Spec icon={Cpu} label="vCPU" value={vm.cores} unit="vCPU" />
+      <Spec icon={MemoryStick} label="RAM" value={vm.ram} unit="GB RAM" />
+      <Spec icon={HardDrive} label="Disco" value={vm.disk} unit="GB disco" />
     </dl>
   );
 }

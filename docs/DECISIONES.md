@@ -137,11 +137,18 @@ Base pública desde la web: `/api`; la web la reenvía al servicio Fastify local
 ## 5. Pantallas y comportamiento visual
 
 - **`/login`:** formulario, errores claros y redirección al dashboard al iniciar sesión.
-- **`/dashboard`:**
-  - resumen de VMs, panel de cores, RAM y disco de las VMs encendidas, y tarjetas de VMs;
-  - las acciones de VM (crear, editar, eliminar, encender/apagar) son visibles solo para ADMIN; para CLIENT no existen en el DOM.
+- **`/dashboard` (Panel), vista de resumen:**
+  - totales de VMs (total, encendidas, apagadas) y de vCPU, RAM y disco asignados a las VMs encendidas;
+  - cada recurso es una pestaña que gobierna dos vistas: el gráfico por sistema operativo y las 5 VMs encendidas con más asignación de ese recurso;
+  - todo se deriva de `GET /vms` y de su caché, sin porcentajes, capacidad total ni «uso»;
+  - el único degradado azul/cian del Panel está en la cabecera de ese resumen;
+  - el Panel enlaza a Máquinas («Ver inventario») y la acción de alta solo existe para ADMIN.
+  - Desde el 2026-10-19 **no repite el listado de tarjetas de VMs**. Antes duplicaba el inventario de `/vms` con sus acciones, lo que alargaba el Panel y repartía las mismas operaciones entre dos vistas. El inventario, sus acciones por VM y el resaltado en tiempo real viven solo en Máquinas.
 - **`/vms`:**
   - listado responsivo con estados de carga, vacío y error;
+  - búsqueda por nombre (sin distinguir mayúsculas ni acentos) y filtros por estado y SO, con recuento de coincidencias, «Restablecer filtros» y un estado propio sin resultados;
+  - el filtrado se hace en el cliente sobre la caché de `GET /vms` (sin endpoints nuevos), así que responde a los cambios optimistas y en tiempo real;
+  - los filtros se reflejan en la URL (`?q=&estado=&so=`) para que sobrevivan a una recarga;
   - ADMIN ve alta, edición, eliminación y el botón rápido de encender/apagar;
   - CLIENT no ve esos controles.
 - **Botón rápido de encender/apagar:** es un `PUT` con el objeto completo y solo existe para ADMIN.
@@ -161,9 +168,11 @@ Base pública desde la web: `/api`; la web la reenvía al servicio Fastify local
 - **UI optimista para crear, actualizar y eliminar:** se muestra el resultado antes de la respuesta, se conserva el estado previo, se revierte ante un error y se reconcilia con el servidor tras el éxito.
   - **Alta fallida:** se retira el elemento provisional y se conservan en memoria los datos del formulario para reintentar.
   - **Actualización fallida:** se restaura la versión previa del elemento.
-  - **Borrado fallido:** el elemento se reinserta en su posición.
+  - **Borrado en curso:** la VM permanece en su posición marcada «Eliminando…» (atenuada, tachada, con sus acciones bloqueadas) y deja de contar al instante en sumas y contadores; al confirmarse se retira.
+  - **Borrado fallido:** se restaura la VM en su posición, sin marca, y se informa con un toast de error.
   - **Borrado con `404`** (la VM ya no existe): no se reinserta; se vuelve a consultar `GET /vms` y se muestra un aviso informativo, sin dejar una VM fantasma.
   - La reversión se aplica por elemento y no restaurando una instantánea completa, para no deshacer mutaciones concurrentes.
+  - **Estado pendiente junto a la VM** hasta que responde la API: «Creando…», «Guardando cambios…», «Encendiendo…», «Apagando…» o «Eliminando…». Solo se bloquean las acciones de esa VM; el resultado final se confirma con un toast.
   - Tras mutación con éxito se invalida `['vms']` solo si no quedan otras mutaciones de VMs en vuelo. Tras error no se invalida: la caché ya revirtió el elemento afectado y un refetch fallido (API caída) no debe vaciar el listado.
 
 ## 6. Tiempo real (plus)
@@ -179,7 +188,9 @@ Base pública desde la web: `/api`; la web la reenvía al servicio Fastify local
 - Los planes de cada fase viven en `docs/phases/` y se enlazan desde `PLAN.md`. Citan este documento y el enunciado, y definen dependencias, pasos, criterios de aceptación y comprobaciones.
 - Ninguna fase se da por terminada solo porque compile. Hay que comprobar el flujo con ADMIN y CLIENT, los errores de la API, la recarga de sesión y la vista móvil cuando aplique.
 - **Obligatorio en cada fase pertinente:** la verificación manual con ambos roles y las pruebas de API. Playwright es adicional.
-- **Bitácora de IA:** `docs/BITACORA_IA.md` resume las herramientas y el trabajo delegado e incluye instrucciones de alcance por módulo, sin transcribir mensajes personales de autorización. El README final se nutre de la bitácora y de la evidencia de cada fase. No se inventan ejecuciones de skills ni resultados de pruebas.
+- **Bitácora de IA:** `docs/BITACORA_IA.md` resume las herramientas y el trabajo delegado, sin transcribir mensajes personales de autorización. El README final se nutre de la bitácora y de la evidencia de cada fase. No se inventan ejecuciones de skills ni resultados de pruebas.
+  - Incluye 1–2 **prompts literales** que se pueden comprobar, copiados sin cambios.
+  - Las «instrucciones de alcance por módulo» son resúmenes normalizados, no transcripciones, y se presentan como tales.
 - **Repositorio:** el proveedor, la visibilidad y la URL se deciden en la fase 09. No se publica antes de esa decisión.
 
 ## 8. Registro de decisiones
@@ -196,3 +207,8 @@ Base pública desde la web: `/api`; la web la reenvía al servicio Fastify local
 | 2026-10-19 | Detalles técnicos registrados para cumplir las decisiones anteriores: columna `nameKey` con `UNIQUE`; normalización NFC con recorte y reducción de espacios; JWT de 8 h; verificación contra un hash ficticio; código `429`; `503` en `/health`; navegadores objetivo Chrome, Edge y Firefox; ESLint y Prettier; prefijo `@repo/` | Decisión propia registrada; revisable |
 | 2026-10-19 | Códigos de error JSON pasan de números tipo HTTP (`400`) a códigos semánticos (`VALIDATION_ERROR`, etc.), alineados con el plan de la fase 02. El status HTTP sigue siendo numérico en la respuesta | Implementación fase 02; revisable |
 | 2026-10-19 | Códigos `VM_NOT_FOUND` y `VM_NAME_TAKEN` para el CRUD de VMs | Implementación fase 03 |
+| 2026-10-19 | Borrado optimista: la fila queda marcada «Eliminando…» hasta la respuesta, ya fuera de las sumas, en vez de retirarse al instante. Estados pendientes con texto junto a la VM, incluidos «Encendiendo…» y «Apagando…» | Revisión humana de los indicadores de carga |
+| 2026-10-19 | Panel como vista de resumen: se retira el listado duplicado de tarjetas (el inventario y sus acciones quedan en Máquinas). Se añade el ranking de las 5 VMs encendidas por recurso, junto al gráfico por SO. Degradado de acento solo en la cabecera del resumen y en el fondo del login. Se elimina del login el texto sobre el entorno y la cookie, sin cambiar la sesión. Sustituye a «tarjetas de VMs» en el Panel de la decisión del 2026-10-19 | Revisión humana de login y Panel |
+| 2026-10-19 | Búsqueda y filtros del inventario en el cliente sobre la caché de `GET /vms`, reflejados en la URL. Sin endpoints ni cambios de permisos | Petición humana de filtros en Máquinas |
+| 2026-10-19 | Filtros de Estado y SO con `FilterSelect` (Radix `DropdownMenu` + `RadioGroup`) y distribución por container queries; el formulario conserva el `<select>` nativo | Petición humana de filtros responsivos |
+| 2026-10-19 | Revisión final de entrega: README con `--frozen-lockfile`, `db:test:migrate` antes de los tests y avisos de Windows (build con `pnpm dev` en marcha, rutas largas); Bitácora con 2 prompts literales comprobables; opción `NEXT_DIST_DIR` para compilar la web sin pisar `.next` | Revisión final de entrega |

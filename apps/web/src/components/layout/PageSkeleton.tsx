@@ -1,11 +1,12 @@
 import { Skeleton } from '../ui/Skeleton';
 
+/** Esqueleto genérico de vista: título, descripción y bloques de contenido. */
 export function PageSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Cargando">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-4 w-72" />
-      <div className="mt-2 grid gap-3">
+    <div role="status" aria-busy="true" aria-label="Cargando vista" className="flex flex-col gap-4">
+      <Skeleton className="h-8 w-56" />
+      <Skeleton className="h-4 w-80 max-w-full" />
+      <div className="mt-4 grid gap-3">
         {Array.from({ length: rows }).map((_, i) => (
           <Skeleton key={i} className="h-16 w-full" />
         ))}

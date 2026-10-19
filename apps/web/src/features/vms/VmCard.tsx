@@ -4,36 +4,47 @@ import { cn } from '../../lib/cn';
 import { RoleGate } from '../auth/RoleGate';
 import { useVmHighlighted } from '../realtime/RealtimeProvider';
 import { VmActions } from './VmActions';
+import { pendingSurface, VmPendingNote } from './VmPendingNote';
 import { VmSpecs } from './VmSpecs';
 import { VmStatusBadge } from './VmStatusBadge';
 import type { VmView } from './types';
 
 export function VmCard({ vm }: { vm: VmView }) {
-  const pending = Boolean(vm.pending);
   const highlighted = useVmHighlighted(vm.id);
+  const deleting = vm.pending === 'delete';
 
   return (
     <article
       className={cn(
-        'vm-surface flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]',
-        pending && 'opacity-70',
+        'vm-surface flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4 hover:border-[var(--border-strong)]',
+        pendingSurface(vm.pending),
         highlighted && 'vm-highlighted',
       )}
-      aria-busy={pending || undefined}
+      aria-busy={vm.pending ? true : undefined}
+      data-pending={vm.pending}
       data-highlighted={highlighted || undefined}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold tracking-tight">{vm.name}</h3>
-          {pending ? (
-            <p className="mt-0.5 text-xs text-[var(--muted)]">Guardando…</p>
-          ) : null}
+      <header className="flex items-start justify-between gap-3">
+        <div className={cn('min-w-0', deleting && 'opacity-60')}>
+          <h3
+            className={cn(
+              'truncate text-base font-semibold tracking-tight',
+              deleting && 'line-through decoration-[var(--danger)]',
+            )}
+          >
+            {vm.name}
+          </h3>
+          <p className="mt-0.5 text-sm text-[var(--muted)]">{vm.os}</p>
         </div>
         <VmStatusBadge status={vm.status} />
+      </header>
+      <div className={cn(deleting && 'opacity-60')}>
+        <VmSpecs vm={vm} />
       </div>
-      <VmSpecs vm={vm} />
+      {/* Solo ADMIN lanza mutaciones, así que el estado pendiente vive en su barra de acciones. */}
       <RoleGate action="vm:edit">
-        <div className="flex justify-end border-t border-[var(--border)] pt-3">
+        <div className="-mx-1 -mb-1 flex min-h-11 items-center justify-between gap-2 border-t border-[var(--border)] pl-1 pt-2">
+          <span>{vm.pending ? <VmPendingNote pending={vm.pending} name={vm.name} /> : null}</span>
           <VmActions vm={vm} />
         </div>
       </RoleGate>

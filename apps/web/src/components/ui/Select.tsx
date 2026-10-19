@@ -1,6 +1,8 @@
+import { ChevronDown } from 'lucide-react';
 import type { SelectHTMLAttributes } from 'react';
 
 import { cn } from '../../lib/cn';
+import { controlClasses, FieldError, FieldLabel } from './field';
 
 export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   label: string;
@@ -14,32 +16,31 @@ export function Select({ className, label, error, options, id, ...props }: Selec
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={selectId} className="text-sm font-medium text-[var(--text)]">
-        {label}
-      </label>
-      <select
-        id={selectId}
-        className={cn(
-          'min-h-11 w-full appearance-none rounded-[var(--radius-md)] border bg-[var(--surface-2)] px-3 text-[var(--text)]',
-          'border-[var(--border)] focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]',
-          error && 'border-[var(--danger)]',
-          className,
-        )}
-        aria-invalid={Boolean(error)}
-        aria-describedby={errorId}
-        {...props}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      {error ? (
-        <p id={errorId} role="alert" className="text-xs text-[var(--danger)]">
-          {error}
-        </p>
-      ) : null}
+      <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
+      <div className="relative">
+        <select
+          id={selectId}
+          className={cn(
+            controlClasses(error),
+            'cursor-pointer appearance-none pl-3 pr-10',
+            className,
+          )}
+          aria-invalid={Boolean(error)}
+          aria-describedby={errorId}
+          {...props}
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          aria-hidden
+          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted)]"
+        />
+      </div>
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { VM_OS_OPTIONS, vmInputSchema, vmNameKey, type VmInput } from '@repo/contracts';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Controller,
   useForm,
@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/Input';
 import { NumberInput } from '../../components/ui/NumberInput';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Select } from '../../components/ui/Select';
+import { cn } from '../../lib/cn';
 
 export const defaultVmValues: VmInput = {
   name: '',
@@ -26,21 +27,56 @@ export const defaultVmValues: VmInput = {
   status: 'OFF',
 };
 
+const DUPLICATE_MESSAGE = 'Ya existe una VM con ese nombre (sin distinguir mayúsculas).';
+
+/**
+ * Validación en tiempo real (mode onChange), pero el mensaje aparece cuando el campo
+ * se ha tocado o tras intentar enviar; los errores de servidor/duplicado se ven siempre.
+ */
 function fieldError(
   errors: FieldErrors<VmInput>,
   name: keyof VmInput,
-  touched: boolean | undefined,
-  dirty: boolean | undefined,
+  visible: boolean,
 ): string | undefined {
   const err = errors[name];
-  // server / duplicate: visibles al recuperar un borrador tras 409
   if (err?.type === 'server' || err?.type === 'duplicate') {
     return typeof err.message === 'string' ? err.message : undefined;
   }
-  if (!touched && !dirty) {
+  if (!visible) {
     return undefined;
   }
   return typeof err?.message === 'string' ? err.message : undefined;
+}
+
+function FormSection({
+  title,
+  description,
+  children,
+  className,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <fieldset
+      className={cn(
+        'flex flex-col gap-4 border-t border-[var(--border)] px-5 py-6 first:border-t-0 sm:px-6',
+        className,
+      )}
+    >
+      <legend className="float-left w-full text-base font-semibold tracking-tight text-[var(--text)]">
+        {title}
+        {description ? (
+          <span className="mt-1 block text-sm font-normal tracking-normal text-[var(--muted)]">
+            {description}
+          </span>
+        ) : null}
+      </legend>
+      {children}
+    </fieldset>
+  );
 }
 
 export type VmFormSubmitHelpers = {
@@ -75,7 +111,7 @@ export function VmForm({
     handleSubmit,
     setError,
     clearErrors,
-    formState: { errors, isValid, touchedFields, dirtyFields },
+    formState: { errors, touchedFields, dirtyFields, submitCount },
   } = useForm<VmInput>({
     resolver: zodResolver(vmInputSchema),
     defaultValues,
@@ -84,15 +120,15 @@ export function VmForm({
 
   const nameValue = useWatch({ control, name: 'name' });
   const [nameBaseline] = useState(defaultValues.name);
+  const submitted = submitCount > 0;
+  const visible = (name: keyof VmInput) =>
+    submitted || Boolean(touchedFields[name]) || Boolean(dirtyFields[name]);
 
   useEffect(() => {
     if (!initialNameTaken) {
       return;
     }
-    setError('name', {
-      type: 'server',
-      message: 'Ya existe una VM con ese nombre (sin distinguir mayúsculas).',
-    });
+    setError('name', { type: 'server', message: DUPLICATE_MESSAGE });
   }, [initialNameTaken, setError]);
 
   useEffect(() => {
@@ -113,10 +149,7 @@ export function VmForm({
       return;
     }
     if (takenNameKeys.has(key)) {
-      setError('name', {
-        type: 'duplicate',
-        message: 'Ya existe una VM con ese nombre (sin distinguir mayúsculas).',
-      });
+      setError('name', { type: 'duplicate', message: DUPLICATE_MESSAGE });
     } else if (errors.name?.type === 'duplicate') {
       clearErrors('name');
     }
@@ -124,84 +157,108 @@ export function VmForm({
 
   return (
     <form
-      className="mx-auto flex max-w-xl flex-col gap-5"
+      className="flex max-w-3xl flex-col gap-6"
       onSubmit={handleSubmit(async (values) => {
         await onSubmit(values, { setError });
       })}
       noValidate
     >
-      <Input
-        label="Nombre"
-        hint="Letras (incluidas acentos y ñ), números, espacios y guion. Entre 3 y 50 caracteres."
-        error={fieldError(errors, 'name', touchedFields.name, dirtyFields.name)}
-        autoComplete="off"
-        {...register('name')}
-      />
+      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
+        <FormSection title="Identificación">
+          <div className="grid gap-4 sm:grid-cols-[3fr_2fr]">
+            <Input
+              label="Nombre"
+              hint="3–50 caracteres: letras (con acentos y ñ), números, espacios y guion."
+              error={fieldError(errors, 'name', visible('name'))}
+              autoComplete="off"
+              spellCheck={false}
+              {...register('name')}
+            />
+            <Select
+              label="Sistema operativo"
+              options={VM_OS_OPTIONS.map((os) => ({ value: os, label: os }))}
+              error={fieldError(errors, 'os', visible('os'))}
+              {...register('os')}
+            />
+          </div>
+        </FormSection>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <NumberInput
-          label="vCPU"
-          unit="vCPU"
-          inputMode="numeric"
-          min={1}
-          max={64}
-          step={1}
-          error={fieldError(errors, 'cores', touchedFields.cores, dirtyFields.cores)}
-          {...register('cores', { valueAsNumber: true })}
-        />
-        <NumberInput
-          label="RAM"
-          unit="GB"
-          inputMode="numeric"
-          min={1}
-          max={512}
-          step={1}
-          error={fieldError(errors, 'ram', touchedFields.ram, dirtyFields.ram)}
-          {...register('ram', { valueAsNumber: true })}
-        />
-        <NumberInput
-          label="Disco"
-          unit="GB"
-          inputMode="numeric"
-          min={10}
-          max={4096}
-          step={1}
-          error={fieldError(errors, 'disk', touchedFields.disk, dirtyFields.disk)}
-          {...register('disk', { valueAsNumber: true })}
-        />
-      </div>
-      <p className="text-xs text-[var(--muted)]">
-        Rangos: vCPU 1–64 · RAM 1–512 GB · disco 10–4096 GB. Solo enteros.
-      </p>
-
-      <Select
-        label="Sistema operativo"
-        options={VM_OS_OPTIONS.map((os) => ({ value: os, label: os }))}
-        error={fieldError(errors, 'os', touchedFields.os, dirtyFields.os)}
-        {...register('os')}
-      />
-
-      <Controller
-        name="status"
-        control={control}
-        render={({ field }) => (
-          <SegmentedControl
-            label="Estado"
-            value={field.value}
-            onChange={field.onChange}
-            options={[
-              { value: 'ON', label: 'Encendida' },
-              { value: 'OFF', label: 'Apagada' },
-            ]}
-          />
-        )}
-      />
-
-      <div className="flex flex-wrap gap-3 pt-2">
-        <Button
-          type="submit"
-          disabled={!isValid || pending || errors.name?.type === 'duplicate' || errors.name?.type === 'server'}
+        <FormSection
+          title="Recursos asignados"
+          description="Valores enteros. Cuentan en el panel solo mientras la VM está encendida."
         >
+          <div className="grid gap-4 sm:grid-cols-3">
+            <NumberInput
+              label="vCPU"
+              unit="vCPU"
+              hint="Entre 1 y 64"
+              inputMode="numeric"
+              min={1}
+              max={64}
+              step={1}
+              error={fieldError(errors, 'cores', visible('cores'))}
+              {...register('cores', { valueAsNumber: true })}
+            />
+            <NumberInput
+              label="RAM"
+              unit="GB"
+              hint="Entre 1 y 512 GB"
+              inputMode="numeric"
+              min={1}
+              max={512}
+              step={1}
+              error={fieldError(errors, 'ram', visible('ram'))}
+              {...register('ram', { valueAsNumber: true })}
+            />
+            <NumberInput
+              label="Disco"
+              unit="GB"
+              hint="Entre 10 y 4096 GB"
+              inputMode="numeric"
+              min={10}
+              max={4096}
+              step={1}
+              error={fieldError(errors, 'disk', visible('disk'))}
+              {...register('disk', { valueAsNumber: true })}
+            />
+          </div>
+        </FormSection>
+
+        <FormSection title="Estado">
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <SegmentedControl
+                label="Estado de la VM"
+                hideLabel
+                value={field.value}
+                onChange={field.onChange}
+                options={[
+                  {
+                    value: 'ON',
+                    label: 'Encendida',
+                    icon: <span aria-hidden className="size-2 rounded-full bg-[var(--success)]" />,
+                  },
+                  {
+                    value: 'OFF',
+                    label: 'Apagada',
+                    icon: (
+                      <span
+                        aria-hidden
+                        className="size-2 rounded-full border border-[var(--muted)]"
+                      />
+                    ),
+                  },
+                ]}
+              />
+            )}
+          />
+        </FormSection>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" loading={Boolean(pending)}>
           {pending ? 'Guardando…' : submitLabel}
         </Button>
         {onCancel ? (

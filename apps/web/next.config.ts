@@ -7,6 +7,8 @@ const apiInternalUrl = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 const nextConfig: NextConfig = {
+  // Permite verificar un build sin pisar el `.next` de un `next dev` en marcha.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   outputFileTracingRoot: repoRoot,
   transpilePackages: ['@repo/contracts'],
   webpack: (config) => {

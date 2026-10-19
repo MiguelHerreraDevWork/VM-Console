@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import { aggregateResources } from './aggregate-resources';
 
-function vm(partial: Partial<Vm> & Pick<Vm, 'name' | 'status' | 'cores' | 'ram' | 'disk' | 'os'>): Vm {
+function vm(
+  partial: Partial<Vm> & Pick<Vm, 'name' | 'status' | 'cores' | 'ram' | 'disk' | 'os'>,
+): Vm {
   return {
     id: partial.id ?? crypto.randomUUID(),
     createdAt: partial.createdAt ?? '2026-01-01T00:00:00.000Z',
@@ -35,6 +37,24 @@ describe('aggregateResources', () => {
       allocated: { cores: 0, ramGb: 0, diskGb: 0 },
       byOs: [],
     });
+  });
+
+  it('una VM con borrado pendiente deja de contar en sumas y totales', () => {
+    const result = aggregateResources([
+      vm({ name: 'keep', status: 'ON', cores: 2, ram: 4, disk: 40, os: 'Ubuntu' }),
+      {
+        ...vm({ name: 'gone', status: 'ON', cores: 8, ram: 16, disk: 200, os: 'Ubuntu' }),
+        pending: 'delete',
+      },
+      {
+        ...vm({ name: 'toggling', status: 'ON', cores: 1, ram: 1, disk: 10, os: 'Debian' }),
+        pending: 'power-on',
+      },
+    ]);
+
+    expect(result.total).toBe(2);
+    expect(result.on).toBe(2);
+    expect(result.allocated).toEqual({ cores: 3, ramGb: 5, diskGb: 50 });
   });
 
   it('mezcla ON/OFF suma solo ON y agrupa por SO', () => {

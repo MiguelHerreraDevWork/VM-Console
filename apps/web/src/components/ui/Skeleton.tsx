@@ -6,7 +6,7 @@ export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>
   return (
     <div
       className={cn(
-        'animate-pulse rounded-[var(--radius-md)] bg-[var(--surface-2)]',
+        'animate-pulse rounded-[var(--radius-md)] bg-[var(--surface-2)] motion-reduce:animate-none',
         className,
       )}
       aria-hidden

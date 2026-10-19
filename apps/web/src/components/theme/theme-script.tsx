@@ -1,4 +1,4 @@
-import { THEME_STORAGE_KEY } from '../../lib/theme';
+import { THEME_STORAGE_KEY } from '../../lib/theme-key';
 
 /** Inline anti-FOUC script: applies stored theme before paint. */
 export function ThemeScript() {

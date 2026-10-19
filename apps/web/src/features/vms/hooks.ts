@@ -1,25 +1,14 @@
 'use client';
 
 import type { Vm, VmInput } from '@repo/contracts';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { ApiClientError } from '../../lib/api-client';
 import * as api from './api';
 import { navigatePreservingDraft } from './draft-nav';
-import {
-  findIndexById,
-  insertTemp,
-  removeById,
-  replaceById,
-  restoreAt,
-} from './lib/cache';
-import type { VmView } from './types';
+import { insertTemp, markPending, removeById, replaceById } from './lib/cache';
+import type { VmPending, VmView } from './types';
 import { useVmDraft } from './VmDraftProvider';
 
 export const vmsQueryKey = ['vms'] as const;
@@ -62,9 +51,14 @@ function toastReturnToForm(message: string, href: string) {
 }
 
 export function useVmsQuery() {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: vmsQueryKey,
     queryFn: api.fetchVms,
+    // Al volver al listado justo después de guardar, una consulta al montar devolvería la
+    // lista del servidor sin el cambio optimista aún en vuelo y lo borraría de la vista.
+    // Mientras haya mutaciones de VMs pendientes se usa la caché; onSettled reconcilia después.
+    refetchOnMount: () => queryClient.isMutating({ mutationKey: vmsMutationKey }) === 0,
   });
 }
 
@@ -105,7 +99,7 @@ export function useCreateVm() {
       if (ctx?.tempId) {
         setVmsCache(queryClient, (old) => replaceById(old, ctx.tempId, vm));
       }
-      toast.success('VM creada');
+      toast.success(`«${vm.name}» creada`);
     },
     onSettled: (_data, error) => {
       // Tras error la caché ya revirtió el elemento; invalidar con la API caída
@@ -117,15 +111,30 @@ export function useCreateVm() {
   });
 }
 
+export type UpdateVmVariables = {
+  id: string;
+  input: VmInput;
+  /** `power`: botón rápido de encender/apagar; `edit` (por defecto): formulario. */
+  intent?: 'edit' | 'power';
+};
+
+/** Estado pendiente que verá el usuario junto a la VM mientras responde la API. */
+export function updatePending({ input, intent }: UpdateVmVariables): VmPending {
+  if (intent === 'power') {
+    return input.status === 'ON' ? 'power-on' : 'power-off';
+  }
+  return 'update';
+}
+
 export function useUpdateVm() {
   const queryClient = useQueryClient();
   const { saveDraft } = useVmDraft();
 
   return useMutation({
     mutationKey: [...vmsMutationKey, 'update'],
-    mutationFn: ({ id, input }: { id: string; input: VmInput; successToast?: string }) =>
-      api.updateVm(id, input),
-    onMutate: async ({ id, input }) => {
+    mutationFn: ({ id, input }: UpdateVmVariables) => api.updateVm(id, input),
+    onMutate: async (variables) => {
+      const { id, input } = variables;
       await queryClient.cancelQueries({ queryKey: vmsQueryKey });
       const list = getVmsCache(queryClient);
       const previous = list.find((vm) => vm.id === id);
@@ -135,7 +144,7 @@ export function useUpdateVm() {
       const optimistic: VmView = {
         ...previous,
         ...input,
-        pending: 'update',
+        pending: updatePending(variables),
         updatedAt: new Date().toISOString(),
       };
       setVmsCache(queryClient, (old) => replaceById(old, id, optimistic));
@@ -145,7 +154,15 @@ export function useUpdateVm() {
       if (ctx?.previous) {
         setVmsCache(queryClient, (old) => replaceById(old, ctx.id, ctx.previous!));
       }
-      const message = errorMessage(err, 'No se pudo guardar');
+      const name = ctx?.previous?.name ?? variables.input.name;
+      if (variables.intent === 'power') {
+        const verb = variables.input.status === 'ON' ? 'encender' : 'apagar';
+        toast.error(`No se pudo ${verb} «${name}». ${errorMessage(err, 'Inténtalo de nuevo.')}`, {
+          duration: Infinity,
+        });
+        return;
+      }
+      const message = errorMessage(err, `No se pudo guardar «${name}»`);
       const retriable =
         err instanceof ApiClientError &&
         (err.code === 'VM_NAME_TAKEN' || err.code === 'VALIDATION_ERROR');
@@ -164,7 +181,11 @@ export function useUpdateVm() {
     },
     onSuccess: (vm, variables) => {
       setVmsCache(queryClient, (old) => replaceById(old, variables.id, vm));
-      toast.success(variables.successToast ?? `«${vm.name}» actualizada`);
+      if (variables.intent === 'power') {
+        toast.success(vm.status === 'ON' ? `«${vm.name}» encendida` : `«${vm.name}» apagada`);
+      } else {
+        toast.success(`«${vm.name}» actualizada`);
+      }
     },
     onSettled: (_data, error) => {
       if (!error) {
@@ -180,32 +201,37 @@ export function useDeleteVm() {
   return useMutation({
     mutationKey: [...vmsMutationKey, 'delete'],
     mutationFn: (id: string) => api.deleteVm(id),
+    // La fila permanece en su sitio marcada «Eliminando…» (y ya no cuenta en las sumas)
+    // hasta que responde la API; entonces se retira o se restaura.
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: vmsQueryKey });
-      const list = getVmsCache(queryClient);
-      const index = findIndexById(list, id);
-      const previous = index >= 0 ? list[index] : undefined;
+      const previous = getVmsCache(queryClient).find((vm) => vm.id === id);
       if (previous) {
-        setVmsCache(queryClient, (old) => removeById(old, id));
+        setVmsCache(queryClient, (old) => markPending(old, id, 'delete'));
       }
-      return { previous, index };
+      return { previous };
     },
     onError: (err, id, ctx) => {
+      const name = ctx?.previous?.name ?? 'la VM';
       const notFound =
-        err instanceof ApiClientError &&
-        (err.status === 404 || err.code === 'VM_NOT_FOUND');
+        err instanceof ApiClientError && (err.status === 404 || err.code === 'VM_NOT_FOUND');
       if (notFound) {
+        // Ya no existe en el servidor: se retira sin restaurarla y se reconcilia.
+        setVmsCache(queryClient, (old) => removeById(old, id));
         void queryClient.refetchQueries({ queryKey: vmsQueryKey });
-        toast.info('Esta VM ya había sido eliminada', { duration: 8000 });
+        toast.info(`«${name}» ya había sido eliminada`, { duration: 8000 });
         return;
       }
-      if (ctx?.previous && ctx.index >= 0) {
-        setVmsCache(queryClient, (old) => restoreAt(old, ctx.index, ctx.previous!));
+      if (ctx?.previous) {
+        setVmsCache(queryClient, (old) => replaceById(old, id, ctx.previous!));
       }
-      toast.error(errorMessage(err, 'No se pudo eliminar la VM'), { duration: Infinity });
+      toast.error(`No se pudo eliminar «${name}». ${errorMessage(err, 'Inténtalo de nuevo.')}`, {
+        duration: Infinity,
+      });
     },
-    onSuccess: () => {
-      toast.success('VM eliminada');
+    onSuccess: (_data, id, ctx) => {
+      setVmsCache(queryClient, (old) => removeById(old, id));
+      toast.success(`«${ctx?.previous?.name ?? 'VM'}» eliminada`);
     },
     onSettled: (_data, error) => {
       // 404 ya hace refetchQueries; otros errores restauran el elemento

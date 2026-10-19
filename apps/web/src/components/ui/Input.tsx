@@ -1,8 +1,9 @@
-import type { InputHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 
 import { cn } from '../../lib/cn';
+import { controlClasses, FieldError, FieldHint, FieldLabel } from './field';
 
-export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+export type InputProps = ComponentPropsWithRef<'input'> & {
   label: string;
   error?: string | undefined;
   hint?: string | undefined;
@@ -15,32 +16,16 @@ export function Input({ className, label, error, hint, id, ...props }: InputProp
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-sm font-medium text-[var(--text)]">
-        {label}
-      </label>
+      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
       <input
         id={inputId}
-        className={cn(
-          'min-h-11 w-full rounded-[var(--radius-md)] border bg-[var(--surface-2)] px-3 text-[var(--text)] placeholder:text-[var(--muted)]',
-          'border-[var(--border)] transition-colors duration-150',
-          'focus-visible:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]',
-          error && 'border-[var(--danger)]',
-          className,
-        )}
+        className={cn(controlClasses(error), 'px-3', className)}
         aria-invalid={Boolean(error)}
         aria-describedby={[errorId, hintId].filter(Boolean).join(' ') || undefined}
         {...props}
       />
-      {hint && !error ? (
-        <p id={hintId} className="text-xs text-[var(--muted)]">
-          {hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p id={errorId} role="alert" className="text-xs text-[var(--danger)]">
-          {error}
-        </p>
-      ) : null}
+      {error ? <FieldError id={errorId}>{error}</FieldError> : null}
+      {hint && !error ? <FieldHint id={hintId}>{hint}</FieldHint> : null}
     </div>
   );
 }

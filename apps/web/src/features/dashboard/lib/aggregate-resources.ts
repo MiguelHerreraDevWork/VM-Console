@@ -21,13 +21,24 @@ export type ResourceAggregate = {
   byOs: OsAllocation[];
 };
 
-export function aggregateResources(vms: readonly Vm[]): ResourceAggregate {
+/**
+ * Suma de recursos de las VMs encendidas. Una VM con borrado optimista en vuelo
+ * (`pending: 'delete'`) ya no cuenta: el resultado del borrado se refleja al instante.
+ */
+export function aggregateResources(
+  vms: readonly (Vm & { pending?: string | undefined })[],
+): ResourceAggregate {
+  let total = 0;
   let on = 0;
   let off = 0;
   const allocated: AllocatedResources = { cores: 0, ramGb: 0, diskGb: 0 };
   const byOsMap = new Map<string, OsAllocation>();
 
   for (const vm of vms) {
+    if (vm.pending === 'delete') {
+      continue;
+    }
+    total += 1;
     if (vm.status === 'ON') {
       on += 1;
       allocated.cores += vm.cores;
@@ -54,7 +65,7 @@ export function aggregateResources(vms: readonly Vm[]): ResourceAggregate {
   return {
     on,
     off,
-    total: vms.length,
+    total,
     allocated,
     byOs,
   };

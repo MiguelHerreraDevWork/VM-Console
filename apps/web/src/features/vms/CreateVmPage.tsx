@@ -1,16 +1,18 @@
 'use client';
 
 import { vmNameKey, type VmInput } from '@repo/contracts';
-import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 
+import { viewMeta } from '../../components/layout/nav';
+import { useNavigateWithPending } from '../../components/layout/navigation-pending';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { useCreateVm, useVmsQuery } from './hooks';
 import { defaultVmValues, VmForm, type VmFormSubmitHelpers } from './VmForm';
 import { useVmDraft } from './VmDraftProvider';
 
 export function CreateVmPage() {
-  const router = useRouter();
+  // Tras guardar o cancelar, el área principal muestra la carga del listado hasta que llega.
+  const navigate = useNavigateWithPending();
   const createVm = useCreateVm();
   const vmsQuery = useVmsQuery();
   const { draft, clearDraft } = useVmDraft();
@@ -22,26 +24,32 @@ export function CreateVmPage() {
   }, [vmsQuery.data]);
 
   function onSubmit(values: VmInput, { setError }: VmFormSubmitHelpers) {
-    const key = vmNameKey(values.name);
-    if (takenNameKeys.has(key)) {
-      setError('name', {
-        type: 'duplicate',
-        message: 'Ya existe una VM con ese nombre (sin distinguir mayúsculas).',
-      });
+    if (takenNameKeys.has(vmNameKey(values.name))) {
+      setError(
+        'name',
+        {
+          type: 'duplicate',
+          message: 'Ya existe una VM con ese nombre (sin distinguir mayúsculas).',
+        },
+        { shouldFocus: true },
+      );
       return;
     }
 
     clearDraft();
     createVm.mutate(values);
-    router.push('/vms');
+    navigate('/vms');
   }
 
   return (
     <>
       <PageHeader
-        title="Nueva máquina virtual"
-        breadcrumb={['Inicio', 'Máquinas', 'Nueva']}
-        description="Completa los datos. La validación se aplica mientras escribes."
+        title={viewMeta.newVm.title}
+        description={
+          createDraft
+            ? 'Recuperamos los datos del intento anterior para que puedas corregirlos y reintentar.'
+            : viewMeta.newVm.description
+        }
       />
       <VmForm
         key={createDraft ? 'draft' : 'blank'}
@@ -52,7 +60,7 @@ export function CreateVmPage() {
         initialNameTaken={createDraft?.nameTaken === true}
         onCancel={() => {
           clearDraft();
-          router.push('/vms');
+          navigate('/vms');
         }}
         onSubmit={onSubmit}
       />

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 
-import { AppShell } from '../../../components/layout/AppShell';
+import { viewMeta } from '../../../components/layout/nav';
 import { PageHeader } from '../../../components/layout/PageHeader';
+import { NewVmButton } from '../../../features/vms/NewVmButton';
 import { VmList } from '../../../features/vms/VmList';
 
 export const metadata: Metadata = {
@@ -10,13 +11,13 @@ export const metadata: Metadata = {
 
 export default function VmsPage() {
   return (
-    <AppShell title="Máquinas virtuales">
+    <>
       <PageHeader
-        title="Inventario"
-        breadcrumb={['Inicio', 'Máquinas']}
-        description="Listado de máquinas virtuales. Las acciones de escritura solo existen para Administrador."
+        title={viewMeta.vms.title}
+        description={viewMeta.vms.description}
+        actions={<NewVmButton />}
       />
       <VmList />
-    </AppShell>
+    </>
   );
 }

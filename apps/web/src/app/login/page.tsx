@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 
+import { BrandMark } from '../../components/layout/BrandMark';
+import { ThemeToggle } from '../../components/theme/ThemeToggle';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { LoginForm } from '../../features/auth/LoginForm';
 import { fetchSessionUser } from '../../features/auth/session-server';
 import { safeNextPath } from '../../lib/safe-next';
@@ -23,23 +26,35 @@ export default async function LoginPage({
 
   return (
     <main className="relative flex min-h-dvh items-center justify-center px-4 py-10">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--accent)_22%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_srgb,var(--accent-2)_14%,transparent),transparent_45%)]"
-      />
-      <div className="relative w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-8 shadow-[var(--shadow)]">
-        <div className="mb-8 flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent)] text-lg font-semibold text-[var(--on-accent)]">
-            V
-          </span>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">VM Console</h1>
-            <p className="text-sm text-[var(--muted)]">Inicia sesión para continuar</p>
+      <div aria-hidden className="bg-glow-page pointer-events-none absolute inset-0" />
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
+      <div className="relative w-full max-w-sm">
+        <div className="mb-6 flex items-center gap-3">
+          <BrandMark className="size-10 text-lg" />
+          <div className="leading-tight">
+            <p className="text-lg font-semibold tracking-tight">VM Console</p>
+            <p className="text-sm text-[var(--muted)]">Inventario de máquinas virtuales</p>
           </div>
         </div>
-        <Suspense fallback={<p className="text-sm text-[var(--muted)]">Cargando formulario…</p>}>
-          <LoginForm />
-        </Suspense>
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-pop)] sm:p-8">
+          <h1 className="text-xl font-semibold tracking-tight">Iniciar sesión</h1>
+          <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
+            Usa tu cuenta de Administrador o de Cliente.
+          </p>
+          <Suspense
+            fallback={
+              <div className="flex flex-col gap-5" aria-hidden>
+                <Skeleton className="h-[4.5rem] w-full" />
+                <Skeleton className="h-[4.5rem] w-full" />
+                <Skeleton className="h-11 w-full" />
+              </div>
+            }
+          >
+            <LoginForm />
+          </Suspense>
+        </div>
       </div>
     </main>
   );
