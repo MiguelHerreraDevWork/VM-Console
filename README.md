@@ -225,7 +225,7 @@ styles/              # Tokens, temas y movimiento
 - Socket.IO usa conexión directa a la API (los rewrites de Next no proxifican el upgrade WebSocket).
 - Con un filtro activo, una VM cuyo cambio optimista deja de cumplirlo sale de la lista al instante; el resultado se confirma con un toast.
 - Verificado en Chrome; no se probó con Safari ni con lectores de pantalla reales.
-- Publicación del repositorio remoto: **pendiente de decisión humana** (proveedor, visibilidad, nombre).
+- Repositorio de código: [GitHub — VM-Console](https://github.com/MiguelHerreraDevWork/VM-Console) (`main`, público).
 
 ## Notas de seguridad
 
@@ -252,7 +252,7 @@ La [bitácora](docs/BITACORA_IA.md) resume el uso de asistentes, las decisiones 
 ### Delegación e intervención humana
 
 - La IA apoyó los planes, el código, las pruebas, el diseño y la documentación.
-- La persona responsable definió la arquitectura, acotó el alcance de cada encargo, decidió las discrepancias con el enunciado (por ejemplo, que el borrado optimista marque la fila «Eliminando…» o que el Panel no repita el inventario) y mantuvo pendiente la publicación del repositorio.
+- La persona responsable definió la arquitectura, acotó el alcance de cada encargo, decidió las discrepancias con el enunciado (por ejemplo, que el borrado optimista marque la fila «Eliminando…» o que el Panel no repita el inventario) y pospuso la publicación hasta terminar la verificación local.
 
 ### Prompts clave (literales)
 
@@ -300,8 +300,8 @@ Dónde intervino la persona en estos dos casos:
 | 06 Dashboard | Terminada |
 | 07 UI optimista | Terminada |
 | 08 Tiempo real (plus) | Terminada |
-| 09 Calidad y entrega | Terminada (local; remoto pendiente) |
+| 09 Calidad y entrega | Terminada; repositorio publicado en GitHub |
 
 La evidencia de la revisión final de entrega (instalación limpia, comandos y recorrido en navegador) está en [`docs/phases/09-calidad-entrega.md`](docs/phases/09-calidad-entrega.md).
 
-**Repositorio remoto:** no publicado aún. Decidir proveedor, visibilidad y nombre antes de cualquier `push`.
+**Repositorio remoto:** [GitHub — VM-Console](https://github.com/MiguelHerreraDevWork/VM-Console), rama `main`.

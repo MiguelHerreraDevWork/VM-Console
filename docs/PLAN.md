@@ -39,9 +39,9 @@ Las versiones exactas se fijan en el lockfile al construir el monorepo.
 
 ## Estado actual
 
-**Fases 01–09 terminadas** en local. Publicación remota pendiente de decisión humana.
+**Fases 01–09 terminadas** en local. Repositorio [publicado en GitHub](https://github.com/MiguelHerreraDevWork/VM-Console), rama `main`.
 
-- README, quality gates, recorrido integral y Git local listos; **no se publica** hasta decidir proveedor, visibilidad y nombre.
+- README, quality gates y recorrido integral verificados; repositorio remoto público `MiguelHerreraDevWork/VM-Console`.
 - **Revisión final de entrega (2026-10-19):** instalación limpia según el README, comandos de calidad y recorrido en navegador sobre el estado final. La evidencia está en una sección propia de [09-calidad-entrega](phases/09-calidad-entrega.md), separada de la evidencia histórica.
 
 Estados válidos de una fase: `Pendiente`, `En curso`, `Bloqueada` o `Terminada`.
@@ -56,15 +56,15 @@ Estados válidos de una fase: `Pendiente`, `En curso`, `Bloqueada` o `Terminada`
 | [06-dashboard-graficos](phases/06-dashboard-graficos.md) | Resumen y panel de recursos asignados | 03–04 | Terminada | Sumas de cores, RAM y disco solo de VMs encendidas, comprobadas |
 | [07-optimistic-ui](phases/07-optimistic-ui.md) | Mutaciones optimistas y feedback | 05–06 | Terminada | Crear, editar y borrar se reflejan al instante y revierten al fallar; `404` en borrado sin VM fantasma; skeletons y toasts |
 | [08-tiempo-real](phases/08-tiempo-real.md) | Sincronización de cambios de estado con Socket.IO (plus) | 03, 07 | Terminada | Dos sesiones ven el cambio de estado; la reconexión recupera el estado; animación breve |
-| [09-calidad-entrega](phases/09-calidad-entrega.md) | Verificación final y documentación | 01–07; 08 si se realiza | Terminada | README, credenciales, diagrama, Bitácora de IA y recorrido integral comprobados; Git local listo; publicación remota pendiente de decisión humana |
+| [09-calidad-entrega](phases/09-calidad-entrega.md) | Verificación final y documentación | 01–07; 08 si se realiza | Terminada | README, credenciales, diagrama, Bitácora de IA y recorrido integral comprobados; Git y publicación remota verificados |
 
 Las fases 03 y 04 pueden avanzar en paralelo una vez exista la autenticación base; sus contratos vienen de `DECISIONES.md`. La fase 09 se prepara durante el proyecto y se cierra al final. Si el tiempo limita, se recorta la fase 08 antes que cualquiera de los requisitos obligatorios.
 
-## Decisiones pendientes
+## Decisiones y condiciones
 
 | Decisión | Fase | Situación |
 | --- | --- | --- |
-| Proveedor, visibilidad y URL del repositorio | 09 | Pendiente de decisión humana. No publicar antes |
+| Repositorio remoto | 09 | Resuelto: GitHub público [VM-Console](https://github.com/MiguelHerreraDevWork/VM-Console), rama `main` |
 | HTTPS local | 02 | Condicional: solo se plantea si la cookie `Secure` no funciona en `http://localhost` con algún navegador objetivo |
 | Transporte de Socket.IO (mismo origen o conexión directa con CORS de un único origen) | 08 | Resuelto: conexión directa a `NEXT_PUBLIC_API_URL` (ver `DECISIONES.md`) |
 

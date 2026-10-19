@@ -274,3 +274,7 @@ Tras las pruebas se restauró el seed en la base de desarrollo (12 VMs, 28 vCPU 
 - Revisión de archivos: `.env` ignorado; sin `node_modules`, `dist`, `.next` ni `*.tsbuildinfo` versionados; `.env.example`, migraciones, lockfile y documentación incluidos.
 - Revisado el diff: sin código de depuración; la API no cambia; contratos solo cambian los mensajes de validación.
 - Commit local en `main` tras esta revisión. Sin remoto, sin `push` y sin reescribir el historial.
+
+### Publicación posterior al cierre local
+
+El repositorio se publicó después de la revisión local en [GitHub — VM-Console](https://github.com/MiguelHerreraDevWork/VM-Console). La rama remota `main` contiene el commit `a81d08c`, y el repositorio es público. Se comprobó el acceso al `README.md` remoto. Las menciones anteriores a ausencia de remoto describen el estado durante la revisión local.
