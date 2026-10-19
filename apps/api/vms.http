@@ -1,0 +1,99 @@
+### Variables
+@base = http://localhost:4000
+@origin = http://localhost:3000
+@adminEmail = admin@demo.local
+@adminPassword = AdminDemo!234
+@clientEmail = cliente@demo.local
+@clientPassword = ClienteDemo!234
+
+### Login ADMIN
+# @name loginAdmin
+POST {{base}}/login
+Content-Type: application/json
+Origin: {{origin}}
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### Login CLIENT
+# @name loginClient
+POST {{base}}/login
+Content-Type: application/json
+Origin: {{origin}}
+
+{
+  "email": "{{clientEmail}}",
+  "password": "{{clientPassword}}"
+}
+
+### List VMs (ADMIN cookie from loginAdmin)
+GET {{base}}/vms
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+### Create VM (ADMIN)
+# @name createVm
+POST {{base}}/vms
+Content-Type: application/json
+Origin: {{origin}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "name": "http-demo-01",
+  "cores": 2,
+  "ram": 4,
+  "disk": 40,
+  "os": "Ubuntu",
+  "status": "ON"
+}
+
+### Update VM (ADMIN)
+PUT {{base}}/vms/{{createVm.response.body.id}}
+Content-Type: application/json
+Origin: {{origin}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "name": "http-demo-01",
+  "cores": 4,
+  "ram": 8,
+  "disk": 80,
+  "os": "Ubuntu",
+  "status": "OFF"
+}
+
+### Delete VM (ADMIN)
+DELETE {{base}}/vms/{{createVm.response.body.id}}
+Origin: {{origin}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+### CLIENT cannot create (expect 403)
+POST {{base}}/vms
+Content-Type: application/json
+Origin: {{origin}}
+Cookie: {{loginClient.response.headers.Set-Cookie}}
+
+{
+  "name": "client-forbidden",
+  "cores": 2,
+  "ram": 4,
+  "disk": 40,
+  "os": "Debian",
+  "status": "ON"
+}
+
+### Foreign Origin (expect 403 ORIGIN_NOT_ALLOWED)
+POST {{base}}/vms
+Content-Type: application/json
+Origin: http://evil.example
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "name": "evil-origin",
+  "cores": 2,
+  "ram": 4,
+  "disk": 40,
+  "os": "Ubuntu",
+  "status": "ON"
+}

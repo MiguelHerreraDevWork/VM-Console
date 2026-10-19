@@ -1,0 +1,39 @@
+{
+  "name": "ifx",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.26.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @repo/web --filter @repo/api dev",
+    "build": "pnpm --filter @repo/contracts build && pnpm --filter @repo/api build && pnpm --filter @repo/web build",
+    "typecheck": "pnpm --filter @repo/contracts typecheck && pnpm --filter @repo/api typecheck && pnpm --filter @repo/web typecheck",
+    "lint": "pnpm --filter @repo/contracts lint && pnpm --filter @repo/api lint && pnpm --filter @repo/web lint",
+    "test": "pnpm --filter @repo/contracts test && pnpm --filter @repo/api test && pnpm --filter @repo/web test",
+    "db:up": "docker compose up -d db",
+    "db:generate": "pnpm --filter @repo/api db:generate",
+    "db:migrate": "pnpm --filter @repo/api db:migrate",
+    "db:seed": "pnpm --filter @repo/api db:seed",
+    "db:reset": "pnpm --filter @repo/api db:reset",
+    "db:test:migrate": "pnpm --filter @repo/api db:test:migrate",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
+  }
+}
